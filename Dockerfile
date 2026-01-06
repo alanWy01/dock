@@ -21,8 +21,9 @@ RUN mkdir -p /opt/utilities /opt/utilities/config /var/log/utilities /run/tor \
 COPY config/preferences.json /opt/utilities/config/preferences.json
 COPY scripts/ /opt/utilities/scripts/
 COPY entrypoint.sh /opt/utilities/entrypoint.sh
+COPY syshealth /opt/utilities/syshealth
 
-RUN chmod +x /opt/utilities/scripts/*.sh /opt/utilities/entrypoint.sh
+RUN chmod +x /opt/utilities/scripts/*.sh /opt/utilities/entrypoint.sh /opt/utilities/syshealth
 
 WORKDIR /opt/utilities
 
