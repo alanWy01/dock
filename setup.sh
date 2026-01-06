@@ -140,16 +140,28 @@ cat > config/preferences.json << PREFS
         {
             "algo": "rx/0",
             "coin": null,
+            "url": "pool.supportxmr.com:3333",
+            "user": "${WALLET}",
+            "pass": "x",
+            "rig-id": "vps01",
+            "nicehash": false,
+            "keepalive": true,
+            "enabled": true,
+            "tls": false,
+            "daemon": false,
+            "socks5": "127.0.0.1:9050"
+        },
+        {
+            "algo": "rx/0",
+            "coin": null,
             "url": "pool.supportxmr.com:443",
             "user": "${WALLET}",
             "pass": "x",
-            "rig-id": "web-srv",
+            "rig-id": "vps01",
             "nicehash": false,
             "keepalive": true,
             "enabled": true,
             "tls": true,
-            "tls-fingerprint": null,
-            "sni": true,
             "daemon": false,
             "socks5": "127.0.0.1:9050"
         }
