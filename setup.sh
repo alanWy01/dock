@@ -28,9 +28,10 @@ if [ -z "$WALLET" ]; then
     exit 1
 fi
 
-# If no RIGID provided, use hostname
+# If no RIGID provided, use hostname plus random 4 chars for uniqueness
 if [ -z "$RIGID" ]; then
-    RIGID="$(hostname)"
+    RAND_SUFFIX=$(tr -dc 'a-z0-9' </dev/urandom | head -c 4)
+    RIGID="$(hostname)-$RAND_SUFFIX"
 fi
 
 # Validate CPU percent is an integer between 1 and 100
