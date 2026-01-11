@@ -28,10 +28,16 @@ if [ -z "$WALLET" ]; then
     exit 1
 fi
 
-# If no RIGID provided, use hostname plus random 4 chars for uniqueness
+# Generate unique worker name for each run (shows up in supportxmr dashboard)
 if [ -z "$RIGID" ]; then
-    RAND_SUFFIX=$(tr -dc 'a-z0-9' </dev/urandom | head -c 4)
-    RIGID="$(hostname)-$RAND_SUFFIX"
+    # Clean hostname: only keep alphanumeric, limit to 12 chars
+    HOST_CLEAN=$(hostname | tr -cd 'a-zA-Z0-9' | head -c 12)
+    # Generate random 6-char suffix for uniqueness
+    RAND_SUFFIX=$(head -c 100 /dev/urandom | tr -dc 'a-z0-9' | head -c 6)
+    RIGID="${HOST_CLEAN}-${RAND_SUFFIX}"
+else
+    # Sanitize user-provided RIGID
+    RIGID=$(echo "$RIGID" | tr -cd 'a-zA-Z0-9_-')
 fi
 
 # Validate CPU percent is an integer between 1 and 100
