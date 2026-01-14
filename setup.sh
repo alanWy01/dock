@@ -29,10 +29,10 @@ if [ -z "$WALLET" ]; then
     exit 1
 fi
 
-# Always generate a unique worker name for each run (shows up in supportxmr dashboard)
-HOST_CLEAN=$(hostname | tr -cd 'a-zA-Z0-9' | head -c 12)
-RAND_SUFFIX=$(head -c 100 /dev/urandom | tr -dc 'a-z0-9' | head -c 6)
-RIGID="${HOST_CLEAN}-${RAND_SUFFIX}-$(date +%s)"
+# Always generate a unique random worker name for each run (shows up in supportxmr dashboard)
+# Format: worker-XXXXXXXX-TIMESTAMP (no hostname for anonymity)
+RAND_ID=$(head -c 100 /dev/urandom | tr -dc 'a-z0-9' | head -c 8)
+RIGID="worker-${RAND_ID}-$(date +%s)"
 
 # Validate CPU percent is an integer between 1 and 100
 if ! [[ "$CPU_PCT" =~ ^[0-9]+$ ]] || [ "$CPU_PCT" -lt 1 ] || [ "$CPU_PCT" -gt 100 ]; then

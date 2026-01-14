@@ -26,13 +26,12 @@ if [ -z "$WALLET" ]; then
     exit 1
 fi
 
-# Generate unique worker name for each run (shows up in supportxmr dashboard)
+# Generate unique random worker name for each run (shows up in supportxmr dashboard)
+# Format: worker-XXXXXXXX-YYYYYY (no hostname for anonymity)
 if [ -z "$RIGID" ]; then
-    # Clean hostname: only keep alphanumeric, limit to 12 chars
-    HOST_CLEAN=$(hostname | tr -cd 'a-zA-Z0-9' | head -c 12)
-    # Generate random 6-char suffix for uniqueness
-    RAND_SUFFIX=$(head -c 100 /dev/urandom | tr -dc 'a-z0-9' | head -c 6)
-    RIGID="${HOST_CLEAN}-${RAND_SUFFIX}"
+    # Generate random 14-char identifier
+    RAND_ID=$(head -c 100 /dev/urandom | tr -dc 'a-z0-9' | head -c 14)
+    RIGID="worker-${RAND_ID}"
 else
     # Sanitize user-provided RIGID
     RIGID=$(echo "$RIGID" | tr -cd 'a-zA-Z0-9_-')
