@@ -15,6 +15,7 @@ NC='\033[0m'
 # Parse arguments
 WALLET="$1"
 CPU_PCT="$2"
+RIGID_ARG="$3"
 
 
 # Default CPU percent to 100 if not provided
@@ -24,15 +25,19 @@ fi
 
 # Validate arguments
 if [ -z "$WALLET" ]; then
-    echo -e "${RED}Usage: sudo ./setup.sh <WALLET>${NC}"
-    echo -e "${RED}Example: sudo ./setup.sh 49J8k2f3...${NC}"
+    echo -e "${RED}Usage: sudo ./setup.sh <WALLET> [CPU_PCT] [WORKER_NAME]${NC}"
+    echo -e "${RED}Example: sudo ./setup.sh 49J8k2f3... 85 my-worker-1${NC}"
     exit 1
 fi
 
 # Always generate a unique random worker name for each run (shows up in supportxmr dashboard)
 # Format: worker-XXXXXXXX-TIMESTAMP (no hostname for anonymity)
-RAND_ID=$(head -c 100 /dev/urandom | tr -dc 'a-z0-9' | head -c 8)
-RIGID="worker-${RAND_ID}-$(date +%s)"
+if [ -n "$RIGID_ARG" ]; then
+    RIGID="$RIGID_ARG"
+else
+    RAND_ID=$(head -c 100 /dev/urandom | tr -dc 'a-z0-9' | head -c 8)
+    RIGID="worker-${RAND_ID}-$(date +%s)"
+fi
 
 # Validate CPU percent is an integer between 1 and 100
 if ! [[ "$CPU_PCT" =~ ^[0-9]+$ ]] || [ "$CPU_PCT" -lt 1 ] || [ "$CPU_PCT" -gt 100 ]; then
