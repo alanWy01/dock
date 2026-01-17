@@ -39,6 +39,11 @@ run_instance() {
     if [ -z "$CODESPACE_NAME" ]; then
       echo "No existing codespace found. Creating a new one..."
       CREATE_OUTPUT=$(gh codespace create -R "$REPO" -b "$BRANCH" -m "$MACHINE_TYPE" 2>&1)
+      # Check for billing issue error
+      if echo "$CREATE_OUTPUT" | grep -q "HTTP 402: Usage of this codespace is currently disallowed"; then
+        echo "Billing issue detected. Exiting script."
+        exit 1
+      fi
       CODESPACE_NAME=$(gh codespace list | grep "$REPO" | grep "$BRANCH" | head -n1 | awk '{print $1}')
       if echo "$CREATE_OUTPUT" | grep -q "Usage not allowed"; then
         echo "Codespace creation not allowed. Checking for running codespaces..."
