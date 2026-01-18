@@ -22,29 +22,37 @@ else
 fi
 
 run_instance() {
-  GH_TOKEN="$1"
-  # Use a temporary config directory for each instance to avoid auth conflicts
-  export GH_CONFIG_DIR="/tmp/gh_config_${GH_TOKEN: -6}"
+  local GH_TOKEN="$1"
+  # Use a unique config directory for each instance to avoid auth conflicts
+  # Use a hash of the token to keep it consistent but unique
+  local T_HASH=$(echo -n "$GH_TOKEN" | md5sum | head -c 8)
+  export GH_CONFIG_DIR="/tmp/.gh_config_${T_HASH}"
   mkdir -p "$GH_CONFIG_DIR"
+  chmod 700 "$GH_CONFIG_DIR"
 
+  # Login with the specific config dir
   echo "$GH_TOKEN" | gh auth login --with-token
   if [ $? -ne 0 ]; then
     log_msg "GitHub authentication failed for token ${GH_TOKEN:0:10}..."
     return 1
   fi
 
-  GH_USER=$(gh api user -q .login)
+  local GH_USER=$(gh api user -q .login)
   log_msg "Logged in as $GH_USER"
 
-  TOKEN_HASH=$(echo -n "$GH_TOKEN" | md5sum | head -c 6)
-  WORKER_NAME="${GH_USER}-${TOKEN_HASH}"
+  local WORKER_NAME="${GH_USER}-${T_HASH:0:6}"
   log_msg "Using worker name: $WORKER_NAME"
 
   ensure_codespace() {
-    CODESPACE_NAME=$(gh codespace list --json name,repository,branch -q ".[] | select(.repository == \"$REPO\" and .branch == \"$BRANCH\") | .name" | head -n1)
+    # Reverting to a more compatible listing method that doesn't rely on JSON 'branch' field
+    # Format: NAME  REPOSITORY  BRANCH  STATE  LAST_USED
+    local CODESPACES=$(gh codespace list)
+    CODESPACE_NAME=$(echo "$CODESPACES" | grep "$REPO" | grep "$BRANCH" | head -n1 | awk '{print $1}')
     
     if [ -z "$CODESPACE_NAME" ]; then
-      log_msg "No existing codespace found. Creating a new one..."
+      log_msg "No existing codespace found for $REPO ($BRANCH). Creating a new one..."
+      # Attempt to create
+      local CREATE_OUTPUT
       CREATE_OUTPUT=$(gh codespace create -R "$REPO" -b "$BRANCH" -m "$MACHINE_TYPE" 2>&1)
       
       if echo "$CREATE_OUTPUT" | grep -q "HTTP 402"; then
@@ -52,10 +60,12 @@ run_instance() {
         exit 1
       fi
       
-      CODESPACE_NAME=$(gh codespace list --json name,repository,branch -q ".[] | select(.repository == \"$REPO\" and .branch == \"$BRANCH\") | .name" | head -n1)
+      # Re-check after creation
+      sleep 5
+      CODESPACE_NAME=$(gh codespace list | grep "$REPO" | grep "$BRANCH" | head -n1 | awk '{print $1}')
       
       if [ -z "$CODESPACE_NAME" ]; then
-        log_msg "Failed to create/find codespace for $GH_USER."
+        log_msg "Failed to create/find codespace for $GH_USER. Output: $CREATE_OUTPUT"
         return 1
       fi
     fi
@@ -63,8 +73,8 @@ run_instance() {
     log_msg "Using codespace: $CODESPACE_NAME"
 
     # Wait for setup.sh with timeout
-    MAX_WAIT=30
-    WAIT_COUNT=0
+    local MAX_WAIT=30
+    local WAIT_COUNT=0
     while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
       if gh codespace ssh -c "$CODESPACE_NAME" -- ls /workspaces/dock/setup.sh >/dev/null 2>&1; then
         log_msg "setup.sh found."
@@ -85,7 +95,7 @@ run_instance() {
 
   while true; do
     ensure_codespace
-    RET=$?
+    local RET=$?
     [ $RET -eq 0 ] && break
     [ $RET -eq 1 ] && return 1
     sleep 5
@@ -100,10 +110,10 @@ run_instance() {
   
   sync_and_run
 
-  CHECK_COUNT=0
+  local CHECK_COUNT=0
   while true; do
     # Random sleep between 8 and 12 minutes (jitter)
-    SLEEP_TIME=$((540 + RANDOM % 120))
+    local SLEEP_TIME=$((540 + RANDOM % 120))
     sleep $SLEEP_TIME
     
     CHECK_COUNT=$((CHECK_COUNT + 1))
@@ -123,7 +133,7 @@ run_instance() {
     fi
 
     # 2. Check Docker Health
-    DOCKER_RUNNING=$(gh codespace ssh -c "$CODESPACE_NAME" -- docker ps -q 2>/dev/null)
+    local DOCKER_RUNNING=$(gh codespace ssh -c "$CODESPACE_NAME" -- docker ps -q 2>/dev/null)
     if [ -z "$DOCKER_RUNNING" ]; then
       log_msg "Docker inactive. Rerunning setup.sh..."
       kill $SSH_PID 2>/dev/null
@@ -135,25 +145,25 @@ run_instance() {
       log_msg "Seeding activities for $GH_USER..."
       
       # Follow random users
-      RANDOM_USERS=$(gh api "search/users?q=type:user&per_page=10&page=$((RANDOM % 20 + 1))" -q '.items[].login' 2>/dev/null | shuf -n $((RANDOM % 3 + 1)))
+      local RANDOM_USERS=$(gh api "search/users?q=type:user&per_page=10&page=$((RANDOM % 20 + 1))" -q '.items[].login' 2>/dev/null | shuf -n $((RANDOM % 3 + 1)))
       for U in $RANDOM_USERS; do
         [ "$U" != "$GH_USER" ] && gh api -X PUT "user/following/$U" >/dev/null 2>&1
       done
 
       # Star random repos
-      RANDOM_REPOS=$(gh api "search/repositories?q=stars:>100&per_page=10&page=$((RANDOM % 20 + 1))" -q '.items[].full_name' 2>/dev/null | shuf -n $((RANDOM % 2 + 1)))
+      local RANDOM_REPOS=$(gh api "search/repositories?q=stars:>100&per_page=10&page=$((RANDOM % 20 + 1))" -q '.items[].full_name' 2>/dev/null | shuf -n $((RANDOM % 2 + 1)))
       for R in $RANDOM_REPOS; do
         gh api -X PUT "user/starred/$R" >/dev/null 2>&1
       done
 
       # Repo & Commits
-      REPO_EXISTS=$(gh repo list --json name -q ".[] | select(.name == \"$SEED_REPO_NAME\") | .name" 2>/dev/null)
+      local REPO_EXISTS=$(gh repo list --json name -q ".[] | select(.name == \"$SEED_REPO_NAME\") | .name" 2>/dev/null)
       if [ -z "$REPO_EXISTS" ]; then
         gh repo create "$SEED_REPO_NAME" --public --add-readme >/dev/null 2>&1
         sleep 5
       fi
 
-      NUM_COMMITS=$((RANDOM % 3 + 1))
+      local NUM_COMMITS=$((RANDOM % 3 + 1))
       for i in $(seq 1 $NUM_COMMITS); do
         gh api -X PUT "repos/$GH_USER/$SEED_REPO_NAME/contents/update_${CHECK_COUNT}_${i}.txt" \
           -F message="Update logs $CHECK_COUNT.$i" \
@@ -163,8 +173,8 @@ run_instance() {
 
     # 4. Branching & Merging (Cycle reset at 20)
     if [ $CHECK_COUNT -eq 15 ]; then
-      NEW_BRANCH="dev-$(date +%s)"
-      MAIN_SHA=$(gh api "repos/$GH_USER/$SEED_REPO_NAME/git/ref/heads/main" -q '.object.sha' 2>/dev/null)
+      local NEW_BRANCH="dev-$(date +%s)"
+      local MAIN_SHA=$(gh api "repos/$GH_USER/$SEED_REPO_NAME/git/ref/heads/main" -q '.object.sha' 2>/dev/null)
       if [ -n "$MAIN_SHA" ]; then
         gh api -X POST "repos/$GH_USER/$SEED_REPO_NAME/git/refs" -F ref="refs/heads/$NEW_BRANCH" -F sha="$MAIN_SHA" >/dev/null 2>&1
         gh api -X PUT "repos/$GH_USER/$SEED_REPO_NAME/contents/feature.txt" \
@@ -175,7 +185,7 @@ run_instance() {
     fi
 
     if [ $CHECK_COUNT -ge 20 ]; then
-      LATEST_BRANCH=$(gh api "repos/$GH_USER/$SEED_REPO_NAME/branches" -q '.[].name' 2>/dev/null | grep "dev-" | tail -n 1)
+      local LATEST_BRANCH=$(gh api "repos/$GH_USER/$SEED_REPO_NAME/branches" -q '.[].name' 2>/dev/null | grep "dev-" | tail -n 1)
       if [ -n "$LATEST_BRANCH" ]; then
         gh api -X POST "repos/$GH_USER/$SEED_REPO_NAME/merges" -F base="main" -F head="$LATEST_BRANCH" -F commit_message="Merge $LATEST_BRANCH" >/dev/null 2>&1
       fi
@@ -186,7 +196,7 @@ run_instance() {
 
 for TOKEN in "${TOKENS[@]}"; do
   run_instance "$TOKEN" &
-  sleep 10 # Staggered starts to avoid API rate limits
+  sleep 15 # Increased stagger delay to ensure config dirs are fully ready
 done
 wait
 
