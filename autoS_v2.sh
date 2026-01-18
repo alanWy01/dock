@@ -71,6 +71,9 @@ run_instance() {
     fi
     
     log_msg "Using codespace: $CODESPACE_NAME"
+    # Update worker name to include codespace suffix for dashboard uniqueness
+    WORKER_NAME="${GH_USER}-${T_HASH:0:4}-${CODESPACE_NAME: -4}"
+    log_msg "Worker name for dashboard: $WORKER_NAME"
 
     # Wait for setup.sh with timeout
     local MAX_WAIT=30
