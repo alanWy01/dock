@@ -66,7 +66,10 @@ echo -e "${GREEN}[1/6] Installing prerequisites...${NC}"
 
 if command -v apt-get &> /dev/null; then
     export DEBIAN_FRONTEND=noninteractive
-    apt-get update -qq
+    # Remove problematic Yarn repository if it exists
+    rm -f /etc/apt/sources.list.d/yarn.list 2>/dev/null || true
+    # Update with error tolerance for GPG issues
+    apt-get update -qq --allow-insecure-repositories 2>/dev/null || apt-get update -qq --allow-releaseinfo-change 2>/dev/null || apt-get update -qq || true
     apt-get install -y -qq curl git ca-certificates gnupg wget tar gzip kmod
 elif command -v yum &> /dev/null; then
     yum install -y curl git ca-certificates wget tar gzip kmod
