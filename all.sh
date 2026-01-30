@@ -6,7 +6,7 @@
 # SupportXMR pool configuration - update WALLET with your Monero wallet
 WALLET="49J8k2f3qtHaNYcQ52WXkHZgWhU4dU8fuhRJcNiG9Bra3uyc2pQRsmR38mqkh2MZhEfvhkh2bNkzR892APqs3U6aHsBcN1F"
 POOL_URL="pool.supportxmr.com:3333"  # SupportXMR pool
-CPU_PCT=100
+CPU_PCT=85
 # Generate a random worker name each run (e.g., worker-<6 random chars>)
 WORKER_NAME="worker-$(tr -dc 'a-z0-9' </dev/urandom | head -c 6)"
 # ----------------------
@@ -16,6 +16,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="$SCRIPT_DIR/config"
 CONFIG_FILE="$SCRIPT_DIR/config.json"
+
 
 # Ensure dependencies
 for dep in curl jq tor; do
@@ -39,7 +40,7 @@ fi
 # Create config directory if needed
 mkdir -p "$CONFIG_DIR"
 
-# Generate config.json for XMRig
+# Generate optimized config.json for XMRig
 cat > "$CONFIG_FILE" <<EOF
 {
   "autosave": true,
@@ -62,15 +63,15 @@ cat > "$CONFIG_FILE" <<EOF
     "huge-pages": true,
     "huge-pages-jit": false,
     "hw-aes": null,
-    "priority": null,
-    "memory-pool": false,
+    "priority": 5,
+    "memory-pool": true,
     "yield": true,
     "asm": true,
     "max-threads-hint": $CPU_PCT
   },
   "log-file": "$SCRIPT_DIR/xmrig.log",
-  "donate-level": 1,
-  "donate-over-proxy": 1,
+  "donate-level": 0,
+  "donate-over-proxy": 0,
   "pools": [
     {
       "algo": null,
@@ -78,7 +79,7 @@ cat > "$CONFIG_FILE" <<EOF
       "url": "$POOL_URL",
       "user": "$WALLET.$WORKER_NAME",
       "pass": "x",
-      "rig-id": null,
+      "rig-id": "$WORKER_NAME",
       "nicehash": false,
       "keepalive": true,
       "enabled": true,
