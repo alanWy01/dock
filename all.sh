@@ -107,9 +107,9 @@ TORRC="/tmp/torrc_local"
 TORDATA="/tmp/tor_data_local"
 TOR_SOCKS_PORT=9050
 
-# Check if Tor is already running on port 9050
-if lsof -Pi :9050 -sTCP:LISTEN -t >/dev/null 2>&1 || netstat -tuln 2>/dev/null | grep -q ":9050"; then
-  echo "Tor is already running on port 9050. Using existing Tor instance."
+# Check if Tor is already running on the configured port
+if lsof -Pi :$TOR_SOCKS_PORT -sTCP:LISTEN -t >/dev/null 2>&1 || netstat -tuln 2>/dev/null | grep -q ":$TOR_SOCKS_PORT"; then
+  echo "Tor is already running on port $TOR_SOCKS_PORT. Using existing Tor instance."
 else
   # Clean up and recreate Tor data directory with proper permissions
   rm -rf "$TORDATA" 2>/dev/null || true
