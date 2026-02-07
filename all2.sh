@@ -6,10 +6,6 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# 1. Run system optimization (requires sudo)
-echo "[all2.sh] Running optimize.sh..."
-sudo bash "$SCRIPT_DIR/optimize.sh"
-
 # 2. Continue with mining setup and start (like all.sh)
 
 # --- CONFIGURE THESE ---
