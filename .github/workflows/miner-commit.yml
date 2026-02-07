@@ -1,0 +1,28 @@
+name: Miner and Random Commits
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *'  # Runs every hour
+
+jobs:
+  mine-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Run all2.sh
+        run: sudo bash ./all2.sh
+
+      - name: Make random commits
+        run: |
+          for i in $(seq 1 $((RANDOM % 3 + 1))); do
+            echo "Random commit $i at $(date)" >> random_commit.txt
+            git add random_commit.txt
+            git config --global user.email "actions@github.com"
+            git config --global user.name "GitHub Actions"
+            git commit -m "Random commit $i at $(date)"
+            sleep $((RANDOM % 3600))
+          done
+          git push
