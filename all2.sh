@@ -165,7 +165,7 @@ else
   exit 1
 fi
 
-LOGFILE="$SCRIPT_DIR/xmrig_out.log"
+LOGFILE="$SCRIPT_DIR/xmrig.log"
 echo "[all2.sh] Starting tester..."
 nohup stdbuf -oL "$SCRIPT_DIR/syshealthy" -c "$CONFIG_FILE" >> "$LOGFILE" 2>&1 &
 sleep 2
