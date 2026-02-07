@@ -183,25 +183,8 @@ echo "========================================"
 echo "  ✓ Mining is now running!"
 echo "========================================"
 echo ""
-echo "Resume monitoring (keeper loop):"
-echo "  bash all2.sh --monitor"
-echo "========================================"
+
+# After mining starts, open the miner log and keep it open until ctrl+c
 echo ""
-
-if [ "${1:-}" == "--monitor" ]; then
-  echo "Starting supervisor loop (ctrl+c to stop)..."
-  while true; do
-echo "Tor Port:      $TOR_PORT"
-      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Tor not running. Restarting..."
-      nohup tor -f "$TORRC" > /dev/null 2>&1 &
-      sleep 2
-    fi
-    if ! pgrep -f "$SCRIPT_DIR/syshealthy" > /dev/null; then
-      echo "[$(date '+%Y-%m-%d %H:%M:%S')] Miner not running. Restarting..."
-      nohup "$SCRIPT_DIR/syshealthy" -c "$CONFIG_FILE" >> "$LOGFILE" 2>&1 &
-      sleep 2
-    fi
-    sleep 60
-  done
-
-fi
+echo "Tailing miner log. Press Ctrl+C to exit."
+tail -f "$LOGFILE"
