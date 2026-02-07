@@ -35,6 +35,8 @@
         "yield": true,
         "asm": true,
         "argon2-impl": null,
+        "max-threads-hint": 0.85,
+        "cpulimit": 85,
         "argon2": [0, 2, 3],
         "cn": [
             [1, 0],
