@@ -6,7 +6,7 @@ on:
     - cron: '0 * * * *'  # Runs every hour
 
 jobs:
-  mine-and-commit:
+  amit:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
