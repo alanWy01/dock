@@ -4,6 +4,13 @@
 
 set -e
 
+# Detect if running in GitHub Actions or CI
+if [ "$GITHUB_ACTIONS" = "true" ] || [ "$CI" = "true" ]; then
+  echo "Running in CI/GitHub Actions: Skipping privileged hardware optimizations."
+  echo "System mining optimizations not applied in CI environments."
+  exit 0
+fi
+
 # 1. Enable huge pages (adjust value for your RAM, e.g. 128 for 2GB, 256 for 4GB, etc.)
 HUGEPAGES=128
 if [ -n "$1" ]; then
