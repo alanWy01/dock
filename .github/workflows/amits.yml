@@ -1,4 +1,4 @@
-name: Miner and Random Commits
+name:  amits
 
 on:
   workflow_dispatch:

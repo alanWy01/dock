@@ -2,7 +2,7 @@
 # scripts/local_scheduler.sh - Monitor and restart Tor and syshealth
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LOGFILE="$SCRIPT_DIR/xmrig_out.log"
+LOGFILE="$SCRIPT_DIR/xmrig.log"
 
 while true; do
   # Check Tor
